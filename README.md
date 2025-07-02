@@ -39,16 +39,27 @@ Enriched data is stored into Supabase for persistent access.
 ### 3. Flow Chronology
 
 1) Email is received, workflow is triggered
+
 2) Javascript code is used to parse `first name`, `last name`, `email` and `body`, and pre-parse `domain name`
+   
 3-A) If email is parsed successfully, a new record is created in the `leads` Supabase table
+
 3-B) If email is not found/parsed, the workflow stops
+
 4) Data undergoes an LLM chain run to extract `domain name` and `company name` - this chain is equipped with a `structured output parser` to enforce data typing and ensure that the required data flows through the node stream
+
 5) Existing data in our Supabase `companies` table is matched with the extracted `domain name`
+
 6-A) If a record is found for the company, skip to step 9
+
 6-B) If a record is not found, we need to extract extra information about the company to create a record
+
 7) Using an `HTTP request` node, we extract the company's `logo url` and a short `description` by feeding the previously parsed `domain name` to the Parsera AI-powered API
+
 8) A new record is created in the `companies` Supabase table with the extracted information
+
 9) Using information returned from step 6-A or step 8 programmatically, with no extra calls to Supabase, the company's row `id` is parsed
+
 10) This `id` is then used to update the `company_id` value of the lead record created in step 3
 
 #### Steps 3-A/B and 6-A/B are routed using `Switch` nodes
