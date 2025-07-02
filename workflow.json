@@ -1,0 +1,690 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        200
+      ],
+      "id": "d38c0915-5dba-44d5-8621-6c68c792e710",
+      "name": "Email Trigger (IMAP)",
+      "credentials": {
+        "imap": {
+          "id": "XZsTFo0DCoYFFKrc",
+          "name": "IMAP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.email }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "empty",
+                      "singleValue": true
+                    },
+                    "id": "af37d159-552d-4143-9312-f514a20e00a0"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "No"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "0e84b706-1896-4f21-80c1-80a8fb81daa2",
+                    "leftValue": "={{ $json.email }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Yes"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        100,
+        200
+      ],
+      "id": "af616adf-76d2-4524-8e97-b5d08cad5809",
+      "name": "Does Email exist"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Email does not exist"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        320,
+        100
+      ],
+      "id": "566234db-2148-4bcf-bdf7-14449838b064",
+      "name": "Could not parse email"
+    },
+    {
+      "parameters": {
+        "tableId": "leads",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "first_name",
+              "fieldValue": "={{ $json.firstName }}"
+            },
+            {
+              "fieldId": "last_name",
+              "fieldValue": "={{ $json.lastName }}"
+            },
+            {
+              "fieldId": "email",
+              "fieldValue": "={{ $json.email }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        320,
+        300
+      ],
+      "id": "4f305244-c2b7-4e8e-ac43-c52b109fbd37",
+      "name": "Create lead in Supabase",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "OcK5XwI16i1KRvTp",
+          "name": "Supabase account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-3.5-turbo",
+          "mode": "list",
+          "cachedResultName": "gpt-3.5-turbo"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        788,
+        520
+      ],
+      "id": "bc44c1e1-ff52-4c19-9367-f9fb7cd1e931",
+      "name": "GPT-3.5-Turbo",
+      "credentials": {
+        "openAiApi": {
+          "id": "jwomUe6iog4ublAW",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "let [name, email] = $json.textPlain.split('\\n')[1].split('<')\nconst body = $json.textPlain.split('\\n').slice(5).join(' ')\n\nname = name.replace('From: ', '').trim().replace('*', '')\nemail = (email || '').replace('>', '').trim()\n\nconst [firstName, lastName] = [name.split(' ')[0], name.split(' ').slice(1).join(' ')]\n\nreturn   {\n    firstName: firstName || 'n/a',\n    lastName: lastName || 'n/a',\n    email,\n    body\n  }\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -120,
+        200
+      ],
+      "id": "39292c45-a9da-4ecc-8443-61ba4d86e96a",
+      "name": "Parse First/Last Name, Email, and Body"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"company_name\": \"Jenna Lingerie\",\n  \"company_domain\": \"jenna-lingerie.net\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        908,
+        520
+      ],
+      "id": "5cdabd6b-d9ce-4c57-90ae-5f45465dd717",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=\"possible_domain\":  {{ $json.domain }}\n\"email_body\": {{ $('Parse First/Last Name, Email, and Body').item.json.body }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You are an intelligent email reading and parsing algorithm for our lead generation sales department.\nYour job is to help us find the name and domain url of the company who sent us the email.\n\nAs a preliminatory step to help you out, we apply a simple split function to the sender's email address which will be provided to you as \"possible_domain\". However, some leads reach out to us from their private accounts, so if the value of \"possible_domain\" is a known email provider (ex: live.com, outlook.com, gmail.com, etc.), discard it.\n\nAdditionally, you will be provided with the actual email content as \"email_body\", which may contain the company's name or domain.\n\nIf the domain is not found, do not take the liberty of making one up by adding a TLD (like .com), simply return it as an empty string.\nIf the company name is not found, do not take the liberty to semantically parse this information, simply use the domain minus the TLD (ex domain: greatcars.net >> company_name = greatcars)\n\nYour output should be structured as follows:\n{\n  \"company_name\": \"example\",\n  \"company_domain\": \"example.com\"\n}\n\n###\n\nExample input 1:\n\"possible_domain\": best-sellers.com\n\"email_body\": Hello, this is John from Best Sellers! Are you free for a call tomorrow?\n\nExample output 1:\n{\n  \"company_name\": \"Best Sellers\",\n  \"company_domain\": \"best-sellers.com\"\n}\n\n\n###\n\nExample input 2:\n\"possible_domain\": gmail.com\n\"email_body\": Hello, this is Roy from The Buffalos Grill! I'm reaching out to request a demo of your app.\n\nExample output 2:\n{\n  \"company_name\": \"The Buffalos Grill\",\n  \"company_domain\": \"\"\n}\n\n###\n\nExample input 3:\n\"possible_domain\": hotmail.com\n\"email_body\": Hello, this is Jane from awesomedeals.com! Let's touch base tomorrow morning.\n\nExample output 3:\n{\n  \"company_name\": \"awesomedeals\",\n  \"company_domain\": \"awesomedeals.com\"\n}"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        760,
+        300
+      ],
+      "id": "3aef87bf-877f-4efd-a997-232e601bc07a",
+      "name": "Extract Company Name and Domain",
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "companies",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "domain",
+              "keyValue": "={{ $json.output.company_domain }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        300
+      ],
+      "id": "2bef3136-d886-463f-a51b-7c32da2f5afd",
+      "name": "Check if Company data exists",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "OcK5XwI16i1KRvTp",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.company_data_found }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "false",
+                      "singleValue": true
+                    },
+                    "id": "c8a730d7-ab2e-4df2-ab8a-2b42b9755dc4"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "No"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "57dc37b3-dcf8-4931-9c9d-6dffe3837720",
+                    "leftValue": "={{ $json.company_data_found }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Yes"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1576,
+        300
+      ],
+      "id": "922a90bf-ec47-4c8b-a8b6-2c55beb45dc5",
+      "name": "Does company exist in Supabase",
+      "alwaysOutputData": false,
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const company_data_found = Object.keys($json).length > 0\n\nreturn {company_data_found}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1356,
+        300
+      ],
+      "id": "beb540ef-d8cf-4f11-a3a4-22c60c0e2953",
+      "name": "Bool flag: is company data found"
+    },
+    {
+      "parameters": {
+        "tableId": "companies",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "name",
+              "fieldValue": "={{ $('Extract Company Name and Domain').item.json.output.company_name }}"
+            },
+            {
+              "fieldId": "domain",
+              "fieldValue": "={{ $('Extract Company Name and Domain').item.json.output.company_domain }}"
+            },
+            {
+              "fieldId": "description",
+              "fieldValue": "={{ $json.data[0].company_description }}"
+            },
+            {
+              "fieldId": "logo_url",
+              "fieldValue": "={{ $json.data[0].logo_url }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2460,
+        -40
+      ],
+      "id": "ef4132fb-63d1-402e-b447-9d7b52e9399c",
+      "name": "Insert company data in Supabase",
+      "credentials": {
+        "supabaseApi": {
+          "id": "OcK5XwI16i1KRvTp",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.parsera.org/v1/extract",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "05ede8196d5158b06476c896fefa460d"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"https://{{ $('Extract Company Name and Domain').item.json.output.company_domain }}\",\n  \"attributes\": {\n    \"company_description\": \"A one-sentence description of the company\",\n    \"logo_url\": \"URL of the company's logo image\"\n  },\n  \"proxy_country\": \"Germany\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1780,
+        160
+      ],
+      "id": "011d9d79-8a48-4955-ac88-f1e9d2b8548b",
+      "name": "Get company description and logo url (Parsera)",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2456,
+        300
+      ],
+      "id": "4a8e7df1-8e98-4206-a17c-5134e2f539db",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const company_id = $input.first().json.id || $('Check if Company data exists').first().json.id\n\nreturn {company_id}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2676,
+        300
+      ],
+      "id": "33b7abbe-c806-4f58-99f4-db5986385637",
+      "name": "Get company_id"
+    },
+    {
+      "parameters": {
+        "jsCode": "const domain = $('Parse First/Last Name, Email, and Body').first().json.email.split('@')[1]\n\nreturn { domain }"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        300
+      ],
+      "id": "7c3b30af-09ed-4209-880d-d839dc7c13a7",
+      "name": "Parse possible domain programmatically"
+    },
+    {
+      "parameters": {
+        "useCustomSchema": true,
+        "operation": "update",
+        "tableId": "leads",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Create lead in Supabase').first().json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "company_id",
+              "fieldValue": "={{ $json.company_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2900,
+        300
+      ],
+      "id": "207756b7-9d18-4718-bb9f-20a3088002a4",
+      "name": "Update company_id for lead",
+      "credentials": {
+        "supabaseApi": {
+          "id": "OcK5XwI16i1KRvTp",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "console.log('Error:', $input.first())\n\nreturn {}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2120,
+        220
+      ],
+      "id": "e5263d53-91e3-4a12-800e-b80c6d967b0c",
+      "name": "Error log"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Email Trigger (IMAP)": {
+      "main": [
+        [
+          {
+            "node": "Parse First/Last Name, Email, and Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Does Email exist": {
+      "main": [
+        [
+          {
+            "node": "Could not parse email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create lead in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create lead in Supabase": {
+      "main": [
+        [
+          {
+            "node": "Parse possible domain programmatically",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT-3.5-Turbo": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Extract Company Name and Domain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse First/Last Name, Email, and Body": {
+      "main": [
+        [
+          {
+            "node": "Does Email exist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Extract Company Name and Domain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Company Name and Domain": {
+      "main": [
+        [
+          {
+            "node": "Check if Company data exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Company data exists": {
+      "main": [
+        [
+          {
+            "node": "Bool flag: is company data found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Does company exist in Supabase": {
+      "main": [
+        [
+          {
+            "node": "Get company description and logo url (Parsera)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        []
+      ]
+    },
+    "Bool flag: is company data found": {
+      "main": [
+        [
+          {
+            "node": "Does company exist in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get company description and logo url (Parsera)": {
+      "main": [
+        [
+          {
+            "node": "Insert company data in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert company data in Supabase": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Get company_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get company_id": {
+      "main": [
+        [
+          {
+            "node": "Update company_id for lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse possible domain programmatically": {
+      "main": [
+        [
+          {
+            "node": "Extract Company Name and Domain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update company_id for lead": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9cb8d39d-6c24-457a-96b9-a10e6fbda201",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "01af5ba2d4b53f9cf549b9e438256836db7c952b6c8ef412073bd2c99f0665d2"
+  },
+  "id": "YofEOoroghRXFL1S",
+  "tags": []
+}
