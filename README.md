@@ -51,8 +51,8 @@ Enriched data is stored into Supabase for persistent access.
 9) Using information returned from step 6-A or step 8 programmatically, with no extra calls to Supabase, the company's row `id` is parsed
 10) This `id` is then used to update the `company_id` value of the lead record created in step 3
 
-Steps 3-A/B and 6-A/B are routed using `Switch` nodes
-AI logic is done using GPT-3.5-Turbo for personal cost-efficiency, feel free to switch up to a bigger model for better output quality.
+#### Steps 3-A/B and 6-A/B are routed using `Switch` nodes
+#### AI logic is done using GPT-3.5-Turbo for personal cost-efficiency, feel free to switch up to a bigger model for better output quality.
 ---
 
 ### 4. AI Enrichment
